@@ -481,3 +481,7 @@ $RECYCLE.BIN/
 # Vim temporary swap files
 *.swp
 .azure
+
+# Local application configuration / secrets
+InternalCommunicationApp/appsettings.Development.json
+InternalCommunicationApp/appsettings.Local.json
