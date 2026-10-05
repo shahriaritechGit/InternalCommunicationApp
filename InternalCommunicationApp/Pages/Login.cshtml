@@ -1,0 +1,31 @@
+@page
+@model LoginModel
+
+@{
+    ViewData["Title"] = "Log In";
+}
+
+<div class = "auth-container">
+    <h2>Log In</h2>
+    <form method = "post">
+        <div>
+            <label asp-for ="Username"></label>
+            <input asp-for="Username" autocomplete="username" />
+            <span asp-validation-for="Username"></span>
+        </div>
+        <div>
+            <label asp-for="Password"></label>
+            <input asp-for="Password" type="password" autocomplete="current-password" />
+            <span asp-validation-for="Password"></span>
+        </div>
+        <button type="submit">Log In</button>
+    </form>
+    @if (!string.IsNullOrEmpty(Model.ErrorMessage))
+    {
+        <p>@Model.ErrorMessage</p>
+    }
+    <p>
+        Don't have an account?
+        <a asp-page="/Signup">Sign up</a>
+    </p>
+</div>

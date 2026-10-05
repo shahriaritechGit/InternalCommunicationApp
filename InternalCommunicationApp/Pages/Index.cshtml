@@ -1,21 +1,132 @@
-﻿@page
+﻿
+@page
+@using System.Security.Claims
 @model IndexModel
+@attribute [Microsoft.AspNetCore.Authorization.Authorize]
 
 @{
-    ViewData["Title"] = "Home";
+    ViewData["Title"] = "Messages";
 }
 
-<div class="text-center">
-    <h1>Internal Communication System</h1>
+<div class="chat-app">
 
-    <p>ASP.NET Core + Razor Pages</p>
-    <input id ='recipientInput'placeholder="Enter recipient's name">
-    <input id ='messageInput'placeholder="Enter your message">
-    <button id="sendButton">Send</button>
-    <p>Our application is running.</p>
-    
+    <!-- Top Bar -->
+    <header class="chat-header">
+        <div class="chat-brand">
+            <h2>Internal Communication</h2>
+        </div>
+
+        <div class="chat-user">
+            <span>@User.Identity?.Name</span>
+        </div>
+    </header>
+
+    <!-- Main Chat Area -->
+    <div class="chat-main">
+
+        <!-- Conversation Sidebar -->
+        <aside class="conversation-sidebar">
+
+            <div class="sidebar-header">
+                <h3>Messages</h3>
+            </div>
+
+        <div class="conversation-list">
+
+            @foreach (var conversation in Model.Conversations)
+            {
+                <button
+                    class="conversation-item"
+                    data-conversation-id="@conversation.ConversationId"
+                    data-username="@conversation.OtherUsername"
+                    type="button">
+
+                    <div class="avatar">
+                        @conversation.OtherUsername
+                            .Substring(0, 1)
+                            .ToUpper()
+                    </div>
+
+                    <div class="conversation-info">
+
+                        <strong>
+                            @conversation.OtherUsername
+                        </strong>
+
+                        <span>
+                            Start a conversation
+                        </span>
+
+                    </div>
+
+                </button>
+            }
+
+        </div>
+
+        </aside>
+
+        <!-- Chat Window -->
+        <section class="chat-window">
+
+            <!-- Chat Header -->
+            <div class="conversation-header">
+
+                <div class="avatar" id="conversationAvatar">
+                    ?
+                </div>
+
+                <div>
+                    <strong id="conversationUsername">
+                        Select a conversation
+                    </strong>                    
+                    <span>Active conversation</span>
+                </div>
+
+            </div>
+
+            <!-- Messages -->
+            <div id="messageContainer" class="message-container">
+
+                <div class="empty-chat">
+                    <h3>No messages yet</h3>
+                    <p>Send a message to start the conversation.</p>
+                </div>
+
+            </div>
+
+            <!-- Message Composer -->
+            <div class="message-composer">
+
+                <button type="button" class="icon-button" title="Attach file">
+                    📎
+                </button>
+
+                <input
+                    id="recipientInput"
+                    type="hidden"
+                    value="" />
+
+                <input
+                    id="messageInput"
+                    type="text"
+                    placeholder="Type a message..."
+                    autocomplete="off" />
+
+                <button
+                    id="sendButton"
+                    type="button"
+                    class="send-button">
+                    Send
+                </button>
+
+            </div>
+
+        </section>
+
+    </div>
+
 </div>
 
-
 <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/9.0.6/signalr.min.js"></script>
-<script src="~/js/chat.js"></script>
+<script src="~/js/chat.js?v=2"></script>
