@@ -5,32 +5,41 @@
     ViewData["Title"] = "Sign Up";
 }
 
-<div class="auth-container">
-    <h2>Create Account</h2>
-
-    <form method="post">
-        <div>
-            <label asp-for="Username"></label>
-            <input asp-for="Username" autocomplete="username" />
-            <span asp-validation-for="Username"></span>
-        </div>
-
-        <div>
-            <label asp-for="Password"></label>
-            <input asp-for="Password" type="password" autocomplete="new-password" />
-            <span asp-validation-for="Password"></span>
-        </div>
-
-        <button type="submit">Sign Up</button>
-    </form>
+<section class="auth-container">
+    <h1>Create account</h1>
 
     @if (!string.IsNullOrEmpty(Model.ErrorMessage))
     {
-        <p>@Model.ErrorMessage</p>
+        <div class="alert alert-danger" role="alert">@Model.ErrorMessage</div>
     }
 
-    <p>
-        Already have an account?
-        <a asp-page="/Login">Log in</a>
+    <form method="post">
+        <div class="form-floating mb-3">
+            <input asp-for="Username" class="form-control" placeholder="Username" autocomplete="username" autofocus />
+            <label asp-for="Username"></label>
+            <span asp-validation-for="Username" class="text-danger small"></span>
+        </div>
+
+        <div class="form-floating mb-3">
+            <input asp-for="Password" class="form-control" placeholder="Password" autocomplete="new-password" />
+            <label asp-for="Password"></label>
+            <span asp-validation-for="Password" class="text-danger small"></span>
+        </div>
+
+        <div class="form-floating mb-3">
+            <input asp-for="ConfirmPassword" class="form-control" placeholder="Confirm password" autocomplete="new-password" />
+            <label asp-for="ConfirmPassword"></label>
+            <span asp-validation-for="ConfirmPassword" class="text-danger small"></span>
+        </div>
+
+        <button type="submit" class="btn btn-primary w-100">Sign up</button>
+    </form>
+
+    <p class="mt-3 mb-0 text-center">
+        Already have an account? <a asp-page="/Login">Log in</a>
     </p>
-</div>
+</section>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

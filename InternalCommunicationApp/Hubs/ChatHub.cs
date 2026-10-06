@@ -1,3 +1,6 @@
+using System.Text.Json;
+using Microsoft.AspNetCore.Authorization;
+using StackExchange.Redis;
 using Microsoft.AspNetCore.SignalR;
 using InternalCommunicationApp.Data;
 using InternalCommunicationApp.Models;
@@ -5,133 +8,113 @@ using Microsoft.EntityFrameworkCore;
 
 namespace InternalCommunicationApp.Hubs;
 
+[Authorize]
 public class ChatHub : Hub
 {
-    private static readonly Dictionary<string, string> Users = new();
+    private const int MaxMessageLength = 2000;
     private readonly AppDbContext _db;
-    public ChatHub(AppDbContext db)
+    private readonly IConnectionMultiplexer _redis;
+
+    public ChatHub(AppDbContext db, IConnectionMultiplexer redis)
     {
         _db = db;
+        _redis = redis;
     }
 
     public override async Task OnConnectedAsync()
     {
-        var username = Context.User?.Identity?.Name;
-        Console.WriteLine($"Authenticated username: {username}");
-        if (!string.IsNullOrWhiteSpace(username))
-        {
-            Users[username] = Context.ConnectionId;
-
-            Console.WriteLine(
-                $"{username} connected with ID {Context.ConnectionId}"
-            );
-            await Clients.Caller.SendAsync(
-                "ConnectedAs",
-                username
-            );
-        }
-
+        await Clients.Caller.SendAsync("ConnectedAs", Context.User?.Identity?.Name);
         await base.OnConnectedAsync();
     }
 
-    public async Task SendMessage(string recipient, string message)
+    public async Task SendMessage(string recipient, string message,string clientId)
     {
-        if (string.IsNullOrWhiteSpace(message))
-            return;
+        message = message?.Trim() ?? "";
+        if (message.Length == 0) throw new HubException("Message is empty.");
+        if (message.Length > MaxMessageLength) throw new HubException("Message is too long.");
+        if (string.IsNullOrWhiteSpace(recipient)) throw new HubException("Choose someone to message first.");
 
-        var senderUsername = Context.User?.Identity?.Name;
+        // Context.UserIdentifier = the NameIdentifier claim set in Login (the user's Id)
+        var senderId = int.Parse(Context.UserIdentifier!);
+        var senderName = Context.User!.Identity!.Name!;
 
-        if (string.IsNullOrWhiteSpace(senderUsername))
-        {
-            Console.WriteLine("Sender could not be identified.");
-            return;
-        }
+        var receiver = await _db.Users.AsNoTracking()
+            .Where(u => u.Username == recipient)
+            .Select(u => new { u.Id, u.Username })
+            .FirstOrDefaultAsync();
 
-        var sender = await _db.Users
-            .FirstOrDefaultAsync(u => u.Username == senderUsername);
-
-        var receiver = await _db.Users
-            .FirstOrDefaultAsync(u => u.Username == recipient);
-
-        if (sender == null || receiver == null)
-        {
-            Console.WriteLine("Sender or recipient does not exist.");
-            return;
-        }
+        if (receiver == null) throw new HubException("That user does not exist.");
+        if (receiver.Id == senderId) throw new HubException("You cannot message yourself.");
 
         var conversation = await _db.Conversations
-            .Where(c => !c.IsGroup)
-            .Where(c => c.ConversationMembers.Any(m => m.UserId == sender.Id))
-            .Where(c => c.ConversationMembers.Any(m => m.UserId == receiver.Id))
+            .Where(c => !c.IsGroup
+                && c.ConversationMembers.Any(m => m.UserId == senderId)
+                && c.ConversationMembers.Any(m => m.UserId == receiver.Id))
             .FirstOrDefaultAsync();
 
         if (conversation == null)
         {
-            conversation = new Conversation
-            {
-                IsGroup = false,
-                CreatedByUserId = sender.Id
-            };
-
-            conversation.ConversationMembers.Add(new ConversationMember
-            {
-                UserId = sender.Id,
-                IsAdmin = false
-            });
-
-            conversation.ConversationMembers.Add(new ConversationMember
-            {
-                UserId = receiver.Id,
-                IsAdmin = false
-            });
-
+            conversation = new Conversation { IsGroup = false, CreatedByUserId = senderId };
+            conversation.ConversationMembers.Add(new ConversationMember { UserId = senderId });
+            conversation.ConversationMembers.Add(new ConversationMember { UserId = receiver.Id });
             _db.Conversations.Add(conversation);
-
             await _db.SaveChangesAsync();
         }
 
-        var newMessage = new Message
+        var msg = new Message
         {
             ConversationId = conversation.Id,
-            SenderId = sender.Id,
+            SenderId = senderId,
             Content = message,
             SentAt = DateTime.UtcNow
         };
-
-        _db.Messages.Add(newMessage);
-
+        _db.Messages.Add(msg);
         await _db.SaveChangesAsync();
 
-        if (Users.TryGetValue(recipient, out var connectionId))
+        var payload = new
         {
-            await Clients.Client(connectionId)
-                .SendAsync(
-                    "ReceiveMessage",
-                    senderUsername,
-                    message
-                );
+            clientId,
+            conversationId = conversation.Id,
+            id = msg.Id,
+            sender = senderName,
+            recipient = receiver.Username,
+            text = msg.Content,
+            sentAt = msg.SentAt
+        };
+        // Goes to every open tab of BOTH users, and to nobody else.
+        await Clients.Users(new[] { senderId.ToString(), receiver.Id.ToString() })
+            .SendAsync("ReceiveMessage", payload);
+        // Redis = fast cache of the newest 50 messages. SQL Server stays the source of truth.
+        try
+        {
+            var db = _redis.GetDatabase();
+            var key = $"chat:{conversation.Id}:recent";
+            await db.ListLeftPushAsync(key, JsonSerializer.Serialize(payload));
+            await db.ListTrimAsync(key, 0, 49);
+            await db.KeyExpireAsync(key, TimeSpan.FromDays(1));
+        }
+        catch (RedisException ex)
+        {
+            Console.WriteLine($"Redis cache skipped: {ex.Message}");
         }
 
-        Console.WriteLine(
-            $"{senderUsername} → {recipient}: {message}"
-        );
+
     }
+    // public override async Task OnDisconnectedAsync(Exception? exception)
+    // {
+    //     var username = Users
+    //         .FirstOrDefault(x => x.Value == Context.ConnectionId)
+    //         .Key;
 
-    public override async Task OnDisconnectedAsync(Exception? exception)
-    {
-        var username = Users
-            .FirstOrDefault(x => x.Value == Context.ConnectionId)
-            .Key;
+    //     if (!string.IsNullOrEmpty(username))
+    //     {
+    //         Users.Remove(username);
 
-        if (!string.IsNullOrEmpty(username))
-        {
-            Users.Remove(username);
+    //         Console.WriteLine(
+    //             $"{username} disconnected."
+    //         );
+    //     }
 
-            Console.WriteLine(
-                $"{username} disconnected."
-            );
-        }
-
-        await base.OnDisconnectedAsync(exception);
-    }
+    //     await base.OnDisconnectedAsync(exception);
+   // }
 }

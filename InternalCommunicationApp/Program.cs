@@ -2,6 +2,7 @@ using InternalCommunicationApp.Data;
 using InternalCommunicationApp.Hubs;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authentication.Cookies;
+using StackExchange.Redis;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -14,7 +15,18 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
         options.AccessDeniedPath = "/Login";
     });
 builder.Services.AddSignalR();
-builder.Services.AddSingleton<RedisConnection>();
+builder.Services.AddSingleton<IConnectionMultiplexer>(_ =>
+{
+    var redisOptions = ConfigurationOptions.Parse(
+        builder.Configuration.GetConnectionString("Redis")
+        ?? throw new InvalidOperationException("Redis connection string is missing!"));
+
+    redisOptions.AbortOnConnectFail = false; 
+    redisOptions.AsyncTimeout = 500;    // ms
+    redisOptions.SyncTimeout = 500;
+    redisOptions.ConnectTimeout = 2000;  
+    return ConnectionMultiplexer.Connect(redisOptions);
+});
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlServer(
         builder.Configuration.GetConnectionString("DefaultConnection")));
