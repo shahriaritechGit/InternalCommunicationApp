@@ -457,31 +457,49 @@ userSearch.addEventListener("input", () => {
     const q = userSearch.value.trim();
     if (!q) { userResults.replaceChildren(); userResults.hidden = true; return; }
 
-    searchTimer = setTimeout(async () => {
-        const res = await fetch(
-            `${location.pathname}?handler=Users&q=${encodeURIComponent(q)}`,
-            { headers: { Accept: "application/json" } });
-        if (!res.ok || userSearch.value.trim() !== q) return;   // ignore stale responses
-        const names = await res.json();
+   function showSearchMessage(text) {
+        const li = document.createElement("li");
+        li.className = "px-3 py-2 text-muted small";
+        li.textContent = text;
+        userResults.replaceChildren(li);
+        userResults.hidden = false;
+    }
 
-        userResults.replaceChildren(...names.map(name => {
-            const li = document.createElement("li");
-            const btn = document.createElement("button");
-            btn.type = "button";
-            btn.className = "user-result";
-            btn.textContent = name;
-            btn.addEventListener("click", () => {
-                userSearch.value = "";
-                userResults.replaceChildren();
-                userResults.hidden = true;
-                ensureSidebarItem(name);
-                openConversation(name);
-                window.ChatUI?.showView("chat");
-            });
-            li.appendChild(btn);
-            return li;
-        }));
-        userResults.hidden = names.length === 0;
+    searchTimer = setTimeout(async () => {
+        try {
+            const res = await fetch(
+                `${location.pathname}?handler=Users&q=${encodeURIComponent(q)}`,
+                { headers: { Accept: "application/json" }, cache: "no-store", redirect: "manual" });
+
+            if (userSearch.value.trim() !== q) return;                 // stale response
+            if (res.type === "opaqueredirect") { showSearchMessage("Session expired. Please log in again."); return; }
+            if (!res.ok) { showSearchMessage(`Search failed (${res.status}).`); return; }
+
+            const names = await res.json();
+            if (names.length === 0) { showSearchMessage("No one found."); return; }
+
+            userResults.replaceChildren(...names.map(name => {
+                const li = document.createElement("li");
+                const btn = document.createElement("button");
+                btn.type = "button";
+                btn.className = "user-result";
+                btn.textContent = name;
+                btn.addEventListener("click", () => {
+                    userSearch.value = "";
+                    userResults.replaceChildren();
+                    userResults.hidden = true;
+                    ensureSidebarItem(name);
+                    openConversation(name);
+                    window.ChatUI?.showView("chat");
+                });
+                li.appendChild(btn);
+                return li;
+            }));
+            userResults.hidden = false;
+        } catch (err) {
+            console.error("User search failed:", err);
+            showSearchMessage("Search failed.");
+        }
     }, 300);
 });
 // Tell the other person we're typing (client throttle: once per 2s)

@@ -682,4 +682,31 @@ body {
 
 .message-actions, .message-edit-row { display: flex; gap: 0.5rem; margin-top: 0.5rem; }
 .message-actions .btn, .message-edit-row .btn { flex: 1; min-height: var(--chat-tap); }
-.message-edit { width: 100%; min-width: 12rem; min-height: var(--chat-tap); margin-top: 0.25rem; font-size: 1rem; }
+.message-edit { width: 100%; min-width: 12rem; min-height: var(--chat-tap); margin-top: 0.25rem; font-size: 1rem; }/* No conversation selected yet: hide the chat pane, show the placeholder */
+.chat-app:not([data-chat-open="true"]) .chat-window { display: none; }
+.chat-app[data-chat-open="true"] .chat-placeholder { display: none; }
+
+.chat-placeholder {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  padding: 1.5rem;
+  text-align: center;
+  color: var(--chat-text-muted);
+}
+
+.chat-placeholder svg {
+  width: 4rem;
+  height: 4rem;
+  margin-bottom: 0.75rem;
+  opacity: 0.6;
+}
+
+/* On phones the list is the home screen, so no placeholder is needed */
+@media (max-width: 47.99rem) {
+  .chat-placeholder { display: none; }
+}
+
