@@ -134,6 +134,7 @@ function findSidebarItem(username) {
         .find(i => i.dataset.username === username);
 }
 async function openConversation(username) {
+    document.querySelector("[data-chat-app]").dataset.chatOpen = "true";
     activeUsername = username;
     recipientInput.value = username;
     conversationUsername.textContent = username;
