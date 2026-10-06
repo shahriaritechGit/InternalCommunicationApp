@@ -23,6 +23,63 @@ const emptyChatHtml =
 const rendered = new Set();      // message ids already on screen (prevents duplicates)
 const pending = new Map();   // clientId -> message element waiting for server confirmation
 let activeUsername = null;
+const conversationStatus = document.getElementById("conversationStatus");
+const onlineUsers = new Set();
+const lastSeen = new Map();   // username -> unix ms
+let typingUser = null;
+let typingTimer;
+
+function renderStatus() {
+    const header = document.querySelector(".conversation-header");
+    if (!activeUsername) {
+        conversationStatus.textContent = "";
+        header.removeAttribute("data-online");
+        return;
+    }
+    header.toggleAttribute("data-online", onlineUsers.has(activeUsername));
+    conversationStatus.textContent =
+        typingUser === activeUsername ? "typing…" :
+        onlineUsers.has(activeUsername) ? "Online" :
+        formatLastSeen(lastSeen.get(activeUsername));
+}
+
+function refreshPresenceUI() {
+    conversationList.querySelectorAll(".conversation-item").forEach(item => {
+        item.toggleAttribute("data-online", onlineUsers.has(item.dataset.username));
+        refreshItemLabel(item);
+    });
+    renderStatus();
+}
+
+function setOnline(username, isOnline, lastSeenMs) {
+    if (isOnline) {
+        onlineUsers.add(username);
+        lastSeen.delete(username);
+    } else {
+        onlineUsers.delete(username);
+        if (lastSeenMs) lastSeen.set(username, lastSeenMs);
+    }
+    refreshPresenceUI();
+}
+
+function loadPresence(username) {
+    return connection.invoke("GetPresence", username)
+        .then(p => setOnline(username, p.online, p.lastSeen))
+        .catch(() => {});
+}
+
+function formatLastSeen(ms) {
+    if (!ms) return "Offline";
+    const mins = Math.floor((Date.now() - ms) / 60000);
+    if (mins < 1) return "Last seen just now";
+    if (mins < 60) return `Last seen ${mins} min ago`;
+
+    const d = new Date(ms);
+    const time = d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+    return d.toDateString() === new Date().toDateString()
+        ? `Last seen today at ${time}`
+        : `Last seen ${d.toLocaleDateString()} ${time}`;
+}
 
 function setComposerEnabled(enabled) {
     messageInput.disabled = !enabled;
@@ -59,17 +116,23 @@ function ensureSidebarItem(username) {
     return item;
 }
 
-function setUnread(item, count) {
-    if (count > 0) {
-        item.dataset.unread = count;
-        item.setAttribute("aria-label",
-            `Open conversation with ${item.dataset.username}, ${count} unread`);
-    } else {
-        delete item.dataset.unread;
-        item.setAttribute("aria-label", `Open conversation with ${item.dataset.username}`);
-    }
+function refreshItemLabel(item) {
+    const parts = [`Open conversation with ${item.dataset.username}`];
+    if (item.dataset.online !== undefined) parts.push("online");
+    if (item.dataset.unread) parts.push(`${item.dataset.unread} unread`);
+    item.setAttribute("aria-label", parts.join(", "));
 }
 
+function setUnread(item, count) {
+    if (count > 0) item.dataset.unread = count;
+    else delete item.dataset.unread;
+    refreshItemLabel(item);
+}
+
+function findSidebarItem(username) {
+    return [...conversationList.querySelectorAll(".conversation-item")]
+        .find(i => i.dataset.username === username);
+}
 async function openConversation(username) {
     activeUsername = username;
     recipientInput.value = username;
@@ -79,6 +142,10 @@ async function openConversation(username) {
     conversationList.querySelectorAll(".conversation-item").forEach(i =>
         i.classList.toggle("active", i.dataset.username === username));
     setUnread(ensureSidebarItem(username), 0);
+    typingUser = null;
+    connection.invoke("MarkRead", username).catch(() => {});
+    loadPresence(username);    
+    renderStatus();
 
     setComposerEnabled(true);
     rendered.clear();
@@ -99,105 +166,6 @@ async function openConversation(username) {
         if (activeUsername === username) window.ChatUI?.setMessagesLoading(false);
     }
 }
-
-// One delegated listener also covers sidebar items created later
-conversationList.addEventListener("click", e => {
-    const item = e.target.closest(".conversation-item");
-    if (item?.dataset.username) openConversation(item.dataset.username);
-});
-
-// People search (debounced)
-let searchTimer;
-userSearch.addEventListener("input", () => {
-    clearTimeout(searchTimer);
-    const q = userSearch.value.trim();
-    if (!q) { userResults.replaceChildren(); userResults.hidden = true; return; }
-
-    searchTimer = setTimeout(async () => {
-        const res = await fetch(
-            `${location.pathname}?handler=Users&q=${encodeURIComponent(q)}`,
-            { headers: { Accept: "application/json" } });
-        if (!res.ok || userSearch.value.trim() !== q) return;   // ignore stale responses
-        const names = await res.json();
-
-        userResults.replaceChildren(...names.map(name => {
-            const li = document.createElement("li");
-            const btn = document.createElement("button");
-            btn.type = "button";
-            btn.className = "user-result";
-            btn.textContent = name;
-            btn.addEventListener("click", () => {
-                userSearch.value = "";
-                userResults.replaceChildren();
-                userResults.hidden = true;
-                ensureSidebarItem(name);
-                openConversation(name);
-                window.ChatUI?.showView("chat");
-            });
-            li.appendChild(btn);
-            return li;
-        }));
-        userResults.hidden = names.length === 0;
-    }, 300);
-});
-// conversations.forEach(conversation => {
-
-//     conversation.addEventListener("click", () => {
-
-//         const username =
-//             conversation.dataset.username;
-
-//         if (!username) {
-//             return;
-//         }
-
-//         recipientInput.value = username;
-
-//         conversations.forEach(item => {
-//             item.classList.remove("active");
-//         });
-
-//         conversation.classList.add("active");
-
-//         conversationUsername.textContent =
-//             username;
-
-//         conversationAvatar.textContent =
-//             username.charAt(0).toUpperCase();
-
-//         console.log(
-//             `Conversation selected: ${username}`
-//         );
-
-//     });
-
-// });
-//siganlR
-connection.on("ConnectedAs", (username) => {
-    console.log(`SignalR connected as ${username}`);
-});
-connection.on("ReceiveMessage", (m) => {
-    const other = m.sender === currentUser ? m.recipient : m.sender;
-
-    const item = ensureSidebarItem(other);
-    item.querySelector(".conversation-info span").textContent = m.text;
-    conversationList.prepend(item);
-
-    // My own message coming back: just confirm the pending bubble
-    const waiting = m.clientId && pending.get(m.clientId);
-    if (waiting) {
-        pending.delete(m.clientId);
-        waiting.classList.remove("pending");
-        rendered.add(m.id);
-        return;
-    }
-
-    if (other === activeUsername) {
-        addMessage(m.sender, m.text, m.id);
-    } else if (m.sender !== currentUser) {
-        setUnread(item, parseInt(item.dataset.unread || "0", 10) + 1);
-    }
-});
 //message to ui
 function addMessage(sender, message, id) {
     if (id != null) {
@@ -258,6 +226,111 @@ async function sendCurrentMessage() {
     }
 }
 
+connection.on("OnlineList", names => {
+    onlineUsers.clear();
+    names.forEach(n => onlineUsers.add(n));
+    refreshPresenceUI();
+        if (activeUsername) 
+        {
+            loadPresence(activeUsername);
+        }
+});
+
+connection.on("PresenceChanged", (name, isOnline, lastSeenMs) => setOnline(name, isOnline, lastSeenMs));
+
+connection.on("UserTyping", name => {
+    if (name !== activeUsername) return;
+    typingUser = name;
+    renderStatus();
+    clearTimeout(typingTimer);
+    typingTimer = setTimeout(() => { typingUser = null; renderStatus(); }, 3000);
+});
+
+connection.on("UnreadCleared", username => {
+    const item = findSidebarItem(username);
+    if (item) setUnread(item, 0);
+});
+conversationList.querySelectorAll(".conversation-item").forEach(refreshItemLabel);
+
+// One delegated listener also covers sidebar items created later
+conversationList.addEventListener("click", e => {
+    const item = e.target.closest(".conversation-item");
+    if (item?.dataset.username) openConversation(item.dataset.username);
+});
+// People search (debounced)
+let searchTimer;
+userSearch.addEventListener("input", () => {
+    clearTimeout(searchTimer);
+    const q = userSearch.value.trim();
+    if (!q) { userResults.replaceChildren(); userResults.hidden = true; return; }
+
+    searchTimer = setTimeout(async () => {
+        const res = await fetch(
+            `${location.pathname}?handler=Users&q=${encodeURIComponent(q)}`,
+            { headers: { Accept: "application/json" } });
+        if (!res.ok || userSearch.value.trim() !== q) return;   // ignore stale responses
+        const names = await res.json();
+
+        userResults.replaceChildren(...names.map(name => {
+            const li = document.createElement("li");
+            const btn = document.createElement("button");
+            btn.type = "button";
+            btn.className = "user-result";
+            btn.textContent = name;
+            btn.addEventListener("click", () => {
+                userSearch.value = "";
+                userResults.replaceChildren();
+                userResults.hidden = true;
+                ensureSidebarItem(name);
+                openConversation(name);
+                window.ChatUI?.showView("chat");
+            });
+            li.appendChild(btn);
+            return li;
+        }));
+        userResults.hidden = names.length === 0;
+    }, 300);
+});
+// Tell the other person we're typing (client throttle: once per 2s)
+let lastTyping = 0;
+messageInput.addEventListener("input", () => {
+    const now = Date.now();
+    if (!activeUsername || now - lastTyping < 2000) return;
+    lastTyping = now;
+    connection.invoke("Typing", activeUsername).catch(() => {});
+});
+
+//siganlR
+connection.on("ConnectedAs", (username) => {
+    console.log(`SignalR connected as ${username}`);
+});
+connection.on("ReceiveMessage", (m) => {
+    const other = m.sender === currentUser ? m.recipient : m.sender;
+
+    const item = ensureSidebarItem(other);
+    item.querySelector(".conversation-info span").textContent = m.text;
+    conversationList.prepend(item);
+
+    const waiting = m.clientId && pending.get(m.clientId);
+    if (waiting) {
+        pending.delete(m.clientId);
+        waiting.classList.remove("pending");
+        rendered.add(m.id);
+        return;
+    }
+
+    if (other === activeUsername) {
+        addMessage(m.sender, m.text, m.id);
+        if (m.sender !== currentUser) {
+            typingUser = null;
+            renderStatus();
+            connection.invoke("MarkRead", other).catch(() => {});   // chat is open, so it's read
+        }
+    } else if (m.sender !== currentUser) {
+        setUnread(item, parseInt(item.dataset.unread || "0", 10) + 1);
+    }
+});
+
 sendButton.addEventListener("click", sendCurrentMessage);
 messageInput.addEventListener("keydown", e => {
     if (e.key === "Enter" && !e.isComposing) {
@@ -273,5 +346,16 @@ connection.start()
     .catch(err => {
         console.error("SignalR connection failed:", err);
     });
+// Heartbeat: server treats 90s of silence as a dead connection
+function sendHeartbeat() {
+    if (connection.state === signalR.HubConnectionState.Connected)
+        connection.invoke("Ping").catch(() => {});
+}
+setInterval(sendHeartbeat, 25000);
+document.addEventListener("visibilitychange", () => { if (!document.hidden) sendHeartbeat(); });
+
+// Keep "Last seen 5 min ago" fresh
+setInterval(renderStatus, 60000);
+
 connection.onreconnecting(() => { sendButton.disabled = true; });
 connection.onreconnected(() => { sendButton.disabled = !activeUsername; });

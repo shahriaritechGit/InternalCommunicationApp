@@ -61,12 +61,11 @@
                         data-conversation-id="@conversation.ConversationId"
                         data-username="@conversation.OtherUsername"
                         aria-label="Open conversation with @conversation.OtherUsername"
+                        data-unread="@(conversation.Unread > 0 ? (int?)conversation.Unread : null)"
                         type="button">
 
                         <div class="avatar" aria-hidden="true">
-                            @conversation.OtherUsername
-                                .Substring(0, 1)
-                                .ToUpper()
+                            @(string.IsNullOrEmpty(conversation.OtherUsername) ? "?" : conversation.OtherUsername[..1].ToUpper())
                         </div>
 
                         <div class="conversation-info">
@@ -104,7 +103,7 @@
                     <h2 class="conversation-title" id="conversationUsername" tabindex="-1">
                         Select a conversation
                     </h2>
-                    <span>Active conversation</span>
+                    <span id="conversationStatus" role="status"></span>
                 </div>
 
             </div>

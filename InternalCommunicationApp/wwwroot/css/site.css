@@ -359,15 +359,23 @@ body {
   background: var(--chat-border);
   font-weight: 700;
   flex-shrink: 0;
-  overflow: hidden;
+  position: relative;
 }
 
-/* If you later add photos: <img class="avatar-img" loading="lazy" decoding="async"
+/* For later to add photos: <img class="avatar-img" loading="lazy" decoding="async"
    width="42" height="42" srcset="a-42.webp 1x, a-84.webp 2x" ...> (width/height prevent CLS) */
 .avatar img {
   width: 100%;
   height: 100%;
+  border-radius: 50%;
   object-fit: cover;
+}
+
+.conversation-item[data-online] .avatar::after,
+.conversation-header[data-online] .avatar::after {
+  content: ""; position: absolute; right: 0; bottom: 0;
+  width: 0.75rem; height: 0.75rem; border-radius: 50%;
+  background: #22c55e; border: 2px solid #fff;
 }
 
 .icon-button,

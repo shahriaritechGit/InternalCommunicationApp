@@ -27,6 +27,8 @@ builder.Services.AddSingleton<IConnectionMultiplexer>(_ =>
     redisOptions.ConnectTimeout = 2000;  
     return ConnectionMultiplexer.Connect(redisOptions);
 });
+builder.Services.AddSingleton<PresenceService>();
+builder.Services.AddHostedService<PresenceSweeper>();
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlServer(
         builder.Configuration.GetConnectionString("DefaultConnection")));

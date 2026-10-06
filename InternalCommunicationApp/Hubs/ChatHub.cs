@@ -14,16 +14,92 @@ public class ChatHub : Hub
     private const int MaxMessageLength = 2000;
     private readonly AppDbContext _db;
     private readonly IConnectionMultiplexer _redis;
+    private readonly PresenceService _presence;
 
-    public ChatHub(AppDbContext db, IConnectionMultiplexer redis)
+    public ChatHub(AppDbContext db, IConnectionMultiplexer redis, PresenceService presence)
     {
         _db = db;
         _redis = redis;
+        _presence = presence;
     }
+    private record Partner(int Id, string Username);
+
+    private static readonly LuaScript RateLimitScript = LuaScript.Prepare(@"
+        local n = redis.call('INCR', @key)
+        if n == 1 then redis.call('PEXPIRE', @key, @ms) end
+        return n");
+
+    // Fixed-window rate limit (atomic). If Redis is down we allow the request.
+    private async Task<bool> RateLimitedAsync(string scope, int max, TimeSpan window)
+    {
+        try
+        {
+            var key = $"rl:{scope}:{Context.UserIdentifier}";
+            var result = await _redis.GetDatabase().ScriptEvaluateAsync(
+                RateLimitScript,
+                new { key = (RedisKey)key, ms = (long)window.TotalMilliseconds });
+            return (long)result > max;
+        }
+        catch (RedisException) { return false; }
+    }
+
+    // username -> id, cached in Redis so typing events never hit SQL
+    private async Task<int?> ResolveUserIdAsync(string username)
+    {
+        var key = $"userid:{username.ToLowerInvariant()}";
+        try
+        {
+            var cached = await _redis.GetDatabase().StringGetAsync(key);
+            if (cached.HasValue) return (int)cached;
+        }
+        catch (RedisException) { }
+
+        var id = await _db.Users.AsNoTracking()
+            .Where(u => u.Username == username)
+            .Select(u => (int?)u.Id)
+            .FirstOrDefaultAsync();
+
+        if (id != null)
+        {
+            try { await _redis.GetDatabase().StringSetAsync(key, id.Value, TimeSpan.FromDays(7)); }
+            catch (RedisException) { }
+        }
+        return id;
+    }
+
+    private Task<List<Partner>> GetPartnersAsync(int userId) =>
+        _db.ConversationMembers.AsNoTracking()
+            .Where(m => m.UserId != userId
+                && !m.Conversation.IsGroup
+                && m.Conversation.ConversationMembers.Any(x => x.UserId == userId))
+            .Select(m => new Partner(m.UserId, m.User.Username))
+            .Distinct()
+            .ToListAsync();
+    public record PresenceDto(bool Online, long? LastSeen);
 
     public override async Task OnConnectedAsync()
     {
-        await Clients.Caller.SendAsync("ConnectedAs", Context.User?.Identity?.Name);
+        var userId = int.Parse(Context.UserIdentifier!);
+        var username = Context.User?.Identity?.Name;
+        await Clients.Caller.SendAsync("ConnectedAs", username);
+
+        try
+        {
+            var cameOnline = await _presence.TouchAsync(userId, Context.ConnectionId);
+            var partners = await GetPartnersAsync(userId);
+
+            if (cameOnline && partners.Count > 0)
+                await Clients.Users(partners.Select(p => p.Id.ToString()).ToList())
+                    .SendAsync("PresenceChanged", username, true, (long?)null);
+
+            var online = await _presence.OnlineAmongAsync(partners.Select(p => p.Id));
+            await Clients.Caller.SendAsync("OnlineList",
+                partners.Where(p => online.Contains(p.Id)).Select(p => p.Username).ToList());
+        }
+        catch (RedisException ex) 
+        { 
+            Console.WriteLine($"Presence skipped: {ex.Message}"); 
+        }
         await base.OnConnectedAsync();
     }
 
@@ -45,7 +121,10 @@ public class ChatHub : Hub
 
         if (receiver == null) throw new HubException("That user does not exist.");
         if (receiver.Id == senderId) throw new HubException("You cannot message yourself.");
-
+        if (await RateLimitedAsync("msg", 10, TimeSpan.FromSeconds(10)))
+        {
+            throw new HubException("You are sending too fast. Please wait a few seconds.");
+        }
         var conversation = await _db.Conversations
             .Where(c => !c.IsGroup
                 && c.ConversationMembers.Any(m => m.UserId == senderId)
@@ -91,6 +170,7 @@ public class ChatHub : Hub
             var key = $"chat:{conversation.Id}:recent";
             await db.ListLeftPushAsync(key, JsonSerializer.Serialize(payload));
             await db.ListTrimAsync(key, 0, 49);
+            await db.HashIncrementAsync($"unread:{receiver.Id}", senderName);
             await db.KeyExpireAsync(key, TimeSpan.FromDays(1));
         }
         catch (RedisException ex)
@@ -100,21 +180,92 @@ public class ChatHub : Hub
 
 
     }
-    // public override async Task OnDisconnectedAsync(Exception? exception)
+    public async Task<PresenceDto> GetPresence(string username)
+    {
+        var id = await ResolveUserIdAsync(username);
+        if (id == null) 
+        {
+            return new PresenceDto(false, null);
+        }
+
+        try
+        {
+            if (await _presence.IsOnlineAsync(id.Value)) 
+            {
+                return new PresenceDto(true, null);
+            }
+            return new PresenceDto(false, await _presence.LastSeenAsync(id.Value));
+        }
+        catch (RedisException) 
+        { 
+            return new PresenceDto(false, null); 
+        }
+    }
+
+    // Heartbeat: client calls this every 25s while the tab is open
+    public async Task Ping()
+    {
+        try
+        {
+            var userId = int.Parse(Context.UserIdentifier!);
+
+            // true only if this user had no live connection (e.g. was swept as stale) -> announce online again
+            if (await _presence.TouchAsync(userId, Context.ConnectionId))
+            {
+                var partners = await GetPartnersAsync(userId);
+                if (partners.Count > 0)
+                    await Clients.Users(partners.Select(p => p.Id.ToString()).ToList())
+                        .SendAsync("PresenceChanged", Context.User!.Identity!.Name, true, (long?)null);
+            }
+        }
+        catch (RedisException) { }
+    }
+    // public async Task<bool> IsOnline(string username)
     // {
-    //     var username = Users
-    //         .FirstOrDefault(x => x.Value == Context.ConnectionId)
-    //         .Key;
+    //     var id = await ResolveUserIdAsync(username);
+    //     if (id == null) return false;
+    //     try { return await _redis.GetDatabase().SetLengthAsync($"presence:{id}") > 0; }
+    //     catch (RedisException) { return false; }
+    // }
 
-    //     if (!string.IsNullOrEmpty(username))
-    //     {
-    //         Users.Remove(username);
+    public async Task Typing(string recipient)
+    {
+        if (string.IsNullOrWhiteSpace(recipient)) return;
+        if (await RateLimitedAsync("typing", 1, TimeSpan.FromSeconds(1))) return;   // max 1/sec
 
-    //         Console.WriteLine(
-    //             $"{username} disconnected."
-    //         );
-    //     }
+        var receiverId = await ResolveUserIdAsync(recipient);
+        if (receiverId == null) return;
 
-    //     await base.OnDisconnectedAsync(exception);
-   // }
+        await Clients.User(receiverId.Value.ToString())
+            .SendAsync("UserTyping", Context.User!.Identity!.Name);
+    }
+
+    public async Task MarkRead(string username)
+    {
+        try { await _redis.GetDatabase().HashDeleteAsync($"unread:{Context.UserIdentifier}", username); }
+        catch (RedisException) { }
+
+        // clears the badge in the user's other tabs too
+        await Clients.User(Context.UserIdentifier!).SendAsync("UnreadCleared", username);
+    }
+
+    public override async Task OnDisconnectedAsync(Exception? exception)
+    {
+        try
+        {
+            var userId = int.Parse(Context.UserIdentifier!);
+
+            if (await _presence.DisconnectAsync(userId, Context.ConnectionId))
+            {
+                var partners = await GetPartnersAsync(userId);
+                if (partners.Count > 0)
+                    await Clients.Users(partners.Select(p => p.Id.ToString()).ToList())
+                        .SendAsync("PresenceChanged", Context.User!.Identity!.Name, false,
+                            DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
+            }
+        }
+        catch (RedisException ex) { Console.WriteLine($"Presence cleanup skipped: {ex.Message}"); }
+
+        await base.OnDisconnectedAsync(exception);
+    }
 }

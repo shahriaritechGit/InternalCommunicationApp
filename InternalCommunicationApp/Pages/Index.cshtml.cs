@@ -36,7 +36,7 @@ public class IndexModel : PageModel
         var currentUserId = CurrentUserId;
 
         Conversations = await _db.Conversations
-            .Where(c => c.ConversationMembers.Any(m => m.UserId == currentUserId))
+            .Where(c => c.ConversationMembers.Any(m => m.UserId == currentUserId) && c.ConversationMembers.Any(m => m.UserId != currentUserId))
             .Select(c => new ConversationViewModel
             {
                 ConversationId = c.Id,
@@ -50,6 +50,14 @@ public class IndexModel : PageModel
             })
             .OrderByDescending(x => x.LastMessageAt)
             .ToListAsync();
+            try
+            {
+                var entries = await _redis.GetDatabase().HashGetAllAsync($"unread:{currentUserId}");
+                var unread = entries.ToDictionary(e => (string)e.Name!, e => (int)e.Value);
+                foreach (var c in Conversations)
+                    if (unread.TryGetValue(c.OtherUsername, out var n)) c.Unread = n;
+            }
+            catch (RedisException) { }
     }
     // GET /?handler=Users&q=af  -> ["afnan", ...]
 public async Task<IActionResult> OnGetUsersAsync(string? q)
@@ -123,6 +131,7 @@ public async Task<IActionResult> OnGetMessagesAsync(string with, long? before)
 
         public string OtherUsername { get; set; } = string.Empty;
         public DateTime? LastMessageAt { get; set; }
+        public int Unread { get; set; }
 
     }
 }
