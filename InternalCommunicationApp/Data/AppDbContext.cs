@@ -16,6 +16,8 @@ public class AppDbContext : DbContext
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
+        modelBuilder.Entity<User>().HasIndex(u => u.Username).IsUnique();
+        modelBuilder.Entity<User>().Property(u => u.Username).HasMaxLength(50);
         // ConversationMember composite primary key
         modelBuilder.Entity<ConversationMember>()
             .HasKey(cm => new { cm.ConversationId, cm.UserId });
@@ -29,6 +31,9 @@ public class AppDbContext : DbContext
             .HasOne(cm => cm.User)
             .WithMany(u => u.ConversationMembers)
             .HasForeignKey(cm => cm.UserId);
+        // fast history paging
+        modelBuilder.Entity<Message>()
+            .HasIndex(m => new { m.ConversationId, m.Id }); 
         // Message -> Conversation
         modelBuilder.Entity<Message>()
             .HasOne(m => m.Conversation)

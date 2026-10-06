@@ -17,13 +17,20 @@ public class SignupModel : PageModel
         _passwordHasher = new PasswordHasher<User>();
     }
     [BindProperty]
-    [Required]
+    [Required, StringLength(50, MinimumLength = 3)]
+    [RegularExpression(@"^[A-Za-z0-9_.-]+$", ErrorMessage = "Use letters, numbers, dot, dash or underscore.")]
     public string Username { get; set; } = string.Empty;
 
     [BindProperty]
-    [Required]
+    [Required, StringLength(100, MinimumLength = 8)]
     [DataType(DataType.Password)]
     public string Password { get; set; } = string.Empty;
+
+    [BindProperty]
+    [Required, DataType(DataType.Password)]
+    [Compare(nameof(Password), ErrorMessage = "Passwords do not match.")]
+    [Display(Name = "Confirm password")]
+    public string ConfirmPassword { get; set; } = string.Empty;
 
     public string? ErrorMessage { get; set; }
 
@@ -46,7 +53,15 @@ public class SignupModel : PageModel
         };
         user.PasswordHash = _passwordHasher.HashPassword(user, Password);
         _db.Users.Add(user);
-        await _db.SaveChangesAsync();
+        try 
+        { 
+            await _db.SaveChangesAsync(); 
+        }
+        catch (DbUpdateException)
+        {
+            ErrorMessage = "Username already exists.";
+            return Page();
+        }
         return RedirectToPage("/Login");
     }
 }

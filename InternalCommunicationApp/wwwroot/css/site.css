@@ -1,5 +1,11 @@
+/* ==========================================================
+   Base (ASP.NET template)
+   ========================================================== */
+
 html {
   font-size: 14px;
+  position: relative;
+  min-height: 100%;
 }
 
 @media (min-width: 768px) {
@@ -12,285 +18,10 @@ html {
   box-shadow: 0 0 0 0.1rem white, 0 0 0 0.25rem #258cfb;
 }
 
-html {
-  position: relative;
-  min-height: 100%;
-}
-
+/* BUG FIX: this rule was never closed, so the entire chat stylesheet
+   was nested inside `body { ... }` and ended with a stray `}`. */
 body {
-  margin-bottom: 60px;/* ==============================
-   Chat Application
-   ============================== */
-
-.chat-app {
-    height: calc(100vh - 32px);
-    display: flex;
-    flex-direction: column;
-    background: #f5f6f8;
-    border: 1px solid #ddd;
-}
-
-/* Header */
-
-.chat-header {
-    height: 64px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 0 24px;
-    background: white;
-    border-bottom: 1px solid #ddd;
-}
-
-.chat-brand h2 {
-    margin: 0;
-    font-size: 20px;
-}
-
-.chat-user {
-    font-size: 15px;
-    font-weight: 600;
-}
-
-/* Main */
-
-.chat-main {
-    flex: 1;
-    min-height: 0;
-    display: flex;
-}
-
-/* Sidebar */
-
-.conversation-sidebar {
-    width: 300px;
-    background: white;
-    border-right: 1px solid #ddd;
-    display: flex;
-    flex-direction: column;
-}
-
-.sidebar-header {
-    padding: 20px;
-    border-bottom: 1px solid #eee;
-}
-
-.sidebar-header h3 {
-    margin: 0;
-}
-
-.conversation-list {
-    overflow-y: auto;
-}
-
-.conversation-item {
-    width: 100%;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 14px 16px;
-    border: none;
-    background: white;
-    text-align: left;
-    cursor: pointer;
-}
-
-.conversation-item:hover {
-    background: #f5f5f5;
-}
-
-.conversation-item.active {
-    background: #eef3ff;
-}
-
-.avatar {
-    width: 42px;
-    height: 42px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: #ddd;
-    font-weight: 700;
-    flex-shrink: 0;
-}
-
-.conversation-info {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    min-width: 0;
-}
-
-.conversation-info strong {
-    font-size: 15px;
-}
-
-.conversation-info span {
-    font-size: 13px;
-    color: #777;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-/* Chat window */
-
-.chat-window {
-    flex: 1;
-    min-width: 0;
-    display: flex;
-    flex-direction: column;
-}
-
-/* Conversation header */
-
-.conversation-header {
-    height: 64px;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 0 20px;
-    background: white;
-    border-bottom: 1px solid #ddd;
-}
-
-.conversation-header strong,
-.conversation-header span {
-    display: block;
-}
-
-.conversation-header span {
-    margin-top: 3px;
-    font-size: 13px;
-    color: #777;
-}
-
-/* Messages */
-.message-wrapper {
-    display: flex;
-    width: 100%;
-}
-
-.message-wrapper.sent {
-    justify-content: flex-end;
-}
-
-.message-wrapper.received {
-    justify-content: flex-start;
-}
-
-.message-bubble {
-    max-width: 65%;
-    padding: 10px 14px;
-    border-radius: 16px;
-    word-wrap: break-word;
-}
-
-.message-wrapper.sent .message-bubble {
-    background: #dbeafe;
-    border-bottom-right-radius: 4px;
-}
-
-.message-wrapper.received .message-bubble {
-    background: white;
-    border: 1px solid #e5e5e5;
-    border-bottom-left-radius: 4px;
-}
-
-.message-sender {
-    font-size: 12px;
-    font-weight: 700;
-    margin-bottom: 4px;
-}
-
-.message-text {
-    font-size: 15px;
-    line-height: 1.4;
-}
-
-.message-container {
-    flex: 1;
-    min-height: 0;
-    overflow-y: auto;
-    padding: 24px;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-}
-
-.empty-chat {
-    margin: auto;
-    text-align: center;
-    color: #777;
-}
-
-.empty-chat h3 {
-    margin-bottom: 6px;
-    color: #444;
-}
-
-/* Composer */
-
-.message-composer {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 14px 18px;
-    background: white;
-    border-top: 1px solid #ddd;
-}
-
-.message-composer input[type="text"] {
-    flex: 1;
-    height: 44px;
-    padding: 0 14px;
-    border: 1px solid #ccc;
-    border-radius: 22px;
-    outline: none;
-    font-size: 15px;
-}
-
-.message-composer input[type="text"]:focus {
-    border-color: #888;
-}
-
-.icon-button,
-.send-button {
-    height: 44px;
-    border: none;
-    cursor: pointer;
-}
-
-.icon-button {
-    width: 44px;
-    border-radius: 50%;
-    background: #eee;
-    font-size: 18px;
-}
-
-.send-button {
-    padding: 0 20px;
-    border-radius: 22px;
-    font-weight: 600;
-}
-
-/* Responsive */
-
-@media (max-width: 700px) {
-
-    .conversation-sidebar {
-        width: 220px;
-    }
-
-    .chat-header {
-        padding: 0 14px;
-    }
-
-    .message-container {
-        padding: 16px;
-    }
-}
+  margin-bottom: 60px;
 }
 
 .form-floating > .form-control-plaintext::placeholder, .form-floating > .form-control::placeholder {
@@ -300,4 +31,627 @@ body {
 
 .form-floating > .form-control-plaintext:focus::placeholder, .form-floating > .form-control:focus::placeholder {
   text-align: start;
+}
+
+
+/* ==========================================================
+   Chat application
+   Structure (keep this hierarchy):
+     1. Tokens
+     2. Shell            .chat-app > .chat-header + .chat-main
+     3. Sidebar          .conversation-sidebar
+     4. Chat window      .chat-window (header / messages / composer)
+     5. Shared pieces    .avatar, .icon-button, skeletons
+     6. Responsive       media queries (viewport) + container queries (component)
+   ========================================================== */
+
+/* ---------- 1. Tokens ---------- */
+
+.chat-app {
+  --chat-bg: #f5f6f8;
+  --chat-surface: #fff;
+  --chat-border: #ddd;
+  --chat-border-soft: #eee;
+  --chat-text-muted: #6b7280;          /* 4.8:1 on white (AA) */
+  --chat-active: #eef3ff;
+  --chat-sent: #dbeafe;
+  --chat-accent: #258cfb;
+
+  --chat-offset: 2rem;                 /* space taken by the site layout around the app; tune to your _Layout */
+  --chat-header-h: 4rem;
+  --chat-tap: 3rem;                    /* 48px minimum touch target */
+  --chat-sidebar-w: clamp(15rem, 30%, 22rem);
+  --chat-gap: 0.75rem;
+}
+
+/* ---------- 2. Shell ---------- */
+
+.chat-app {
+  container: chat / inline-size;       /* lets children query the app's width */
+  height: calc(100vh - var(--chat-offset));
+  height: calc(100dvh - var(--chat-offset));   /* dvh = ignores mobile browser toolbars */
+  display: flex;
+  flex-direction: column;
+  background: var(--chat-bg);
+  border: 1px solid var(--chat-border);
+}
+
+.chat-header {
+  min-height: var(--chat-header-h);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--chat-gap);
+  padding: 0 1.5rem;
+  background: var(--chat-surface);
+  border-bottom: 1px solid var(--chat-border);
+}
+
+.chat-brand h1,
+.chat-brand h2 {
+  margin: 0;
+  font-size: 1.25rem;
+}
+
+.chat-user {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chat-main {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: var(--chat-sidebar-w) minmax(0, 1fr);
+}
+
+/* ---------- 3. Sidebar ---------- */
+
+.conversation-sidebar {
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--chat-surface);
+  border-right: 1px solid var(--chat-border);
+}
+
+.sidebar-header {
+  padding: 1.25rem;
+  border-bottom: 1px solid var(--chat-border-soft);
+}
+
+.sidebar-header h2,
+.sidebar-header h3 {
+  margin: 0;
+  font-size: 1.125rem;
+}
+
+.conversation-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+.conversation-item {
+  width: 100%;
+  min-height: 4rem;
+  display: flex;
+  align-items: center;
+  gap: var(--chat-gap);
+  padding: 0.875rem 1rem;
+  border: none;
+  background: var(--chat-surface);
+  text-align: left;
+  cursor: pointer;
+}
+
+.conversation-item:hover {
+  background: #f5f5f5;
+}
+
+.conversation-item.active,
+.conversation-item[aria-current="true"] {
+  background: var(--chat-active);
+}
+
+.conversation-item:focus-visible,
+.icon-button:focus-visible,
+.send-button:focus-visible {
+  outline: 0.1875rem solid var(--chat-accent);
+  outline-offset: -0.1875rem;
+}
+
+.conversation-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+.conversation-info strong {
+  font-size: 0.9375rem;
+}
+
+.conversation-info span {
+  font-size: 0.8125rem;
+  color: var(--chat-text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ---------- 4. Chat window ---------- */
+
+.chat-window {
+  container: pane / inline-size;       /* component-level responsiveness */
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* 4a. Conversation header */
+
+.conversation-header {
+  min-height: var(--chat-header-h);
+  display: flex;
+  align-items: center;
+  gap: var(--chat-gap);
+  padding: 0 1.25rem;
+  background: var(--chat-surface);
+  border-bottom: 1px solid var(--chat-border);
+}
+
+.conversation-header > div:not(.avatar):not(.back-button) {
+  min-width: 0;
+}
+
+.conversation-header strong,
+.conversation-header span,
+.conversation-title {
+  display: block;
+}
+
+.conversation-title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.conversation-title:focus {
+  outline: none;                       /* focused programmatically only */
+}
+
+.conversation-header span {
+  margin-top: 0.1875rem;
+  font-size: 0.8125rem;
+  color: var(--chat-text-muted);
+}
+
+.back-button {
+  display: none;                       /* shown on small screens only */
+}
+
+/* 4b. Messages */
+
+.message-area {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.message-container {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+}
+
+.message-wrapper {
+  display: flex;
+  width: 100%;
+}
+
+.message-wrapper.sent {
+  justify-content: flex-end;
+}
+
+.message-wrapper.received {
+  justify-content: flex-start;
+}
+
+.message-bubble {
+  max-width: 65%;
+  padding: 0.625rem 0.875rem;
+  border-radius: 1rem;
+  overflow-wrap: anywhere;             /* long words / URLs never overflow */
+  word-wrap: break-word;
+}
+
+.message-wrapper.sent .message-bubble {
+  background: var(--chat-sent);
+  border-bottom-right-radius: 0.25rem;
+}
+
+.message-wrapper.received .message-bubble {
+  background: var(--chat-surface);
+  border: 1px solid #e5e5e5;
+  border-bottom-left-radius: 0.25rem;
+}
+
+.message-sender {
+  font-size: 0.75rem;
+  font-weight: 700;
+  margin-bottom: 0.25rem;
+}
+
+.message-text {
+  font-size: 0.9375rem;
+  line-height: 1.4;
+}
+
+.empty-chat {
+  margin: auto;
+  text-align: center;
+  color: var(--chat-text-muted);
+  padding: 0 1rem;
+}
+
+.empty-chat h3 {
+  margin-bottom: 0.375rem;
+  font-size: 1.125rem;
+  color: #444;
+}
+
+/* 4c. Composer */
+
+.message-composer {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  padding: 0.875rem 1.125rem;
+  padding-bottom: max(0.875rem, env(safe-area-inset-bottom));   /* iPhone home bar */
+  background: var(--chat-surface);
+  border-top: 1px solid var(--chat-border);
+}
+
+.message-composer input[type="text"] {
+  flex: 1;
+  min-width: 0;
+  height: var(--chat-tap);
+  padding: 0 1rem;
+  border: 1px solid #ccc;
+  border-radius: 999px;
+  outline: none;
+  font-size: 1rem;                     /* >=16px stops iOS zooming on focus */
+}
+
+.message-composer input[type="text"]:focus {
+  border-color: var(--chat-accent);
+  box-shadow: 0 0 0 0.1875rem rgba(37, 140, 251, 0.25);
+}
+
+/* ---------- 5. Shared pieces ---------- */
+
+.avatar {
+  width: 2.625rem;
+  height: 2.625rem;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--chat-border);
+  font-weight: 700;
+  flex-shrink: 0;
+  position: relative;
+}
+
+/* For later to add photos: <img class="avatar-img" loading="lazy" decoding="async"
+   width="42" height="42" srcset="a-42.webp 1x, a-84.webp 2x" ...> (width/height prevent CLS) */
+.avatar img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.conversation-item[data-online] .avatar::after,
+.conversation-header[data-online] .avatar::after {
+  content: ""; position: absolute; right: 0; bottom: 0;
+  width: 0.75rem; height: 0.75rem; border-radius: 50%;
+  background: #22c55e; border: 2px solid #fff;
+}
+
+.icon-button,
+.send-button {
+  height: var(--chat-tap);
+  min-width: var(--chat-tap);
+  border: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.375rem;
+  flex-shrink: 0;
+}
+
+.icon-button {
+  width: var(--chat-tap);
+  padding: 0;
+  border-radius: 50%;
+  background: #eee;
+  color: #333;
+}
+
+.icon-button:hover {
+  background: #e2e2e2;
+}
+
+.icon-button svg,
+.send-button svg {
+  width: 1.375rem;
+  height: 1.375rem;
+  flex-shrink: 0;
+}
+
+.send-button {
+  padding: 0 1.25rem;
+  border-radius: 999px;
+  font-weight: 600;
+}
+
+/* Skeleton loaders */
+
+.skeleton {
+  display: block;
+  border-radius: 0.375rem;
+  background: linear-gradient(90deg, #e5e7eb 25%, #f3f4f6 37%, #e5e7eb 63%);
+  background-size: 400% 100%;
+  animation: skeleton-shimmer 1.4s ease-in-out infinite;
+}
+
+.skeleton--circle {
+  border-radius: 50%;
+}
+
+@keyframes skeleton-shimmer {
+  0%   { background-position: 100% 50%; }
+  100% { background-position: 0 50%; }
+}
+
+.conversation-skeleton-item {
+  display: flex;
+  align-items: center;
+  gap: var(--chat-gap);
+  min-height: 4rem;
+  padding: 0.875rem 1rem;
+}
+
+.conversation-skeleton-item .skeleton--circle {
+  width: 2.625rem;
+  height: 2.625rem;
+  flex-shrink: 0;
+}
+
+.conversation-skeleton-lines {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.message-skeleton {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+  padding: 1.5rem;
+  overflow: hidden;
+  background: var(--chat-bg);
+}
+
+.message-skeleton .skeleton {
+  height: 2.5rem;
+  border-radius: 1rem;
+}
+
+.message-skeleton .skeleton--right { align-self: flex-end; }
+.message-skeleton .skeleton--left  { align-self: flex-start; }
+
+[hidden] {
+  display: none !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton {
+    animation: none;
+  }
+}
+
+/* ---------- 6. Responsive ---------- */
+
+/* 6a. Component queries: react to the space the component gets, not the viewport */
+
+@container pane (max-width: 34rem) {
+  .message-bubble {
+    max-width: 85%;
+  }
+
+  .message-container,
+  .message-skeleton {
+    padding: 1rem;
+  }
+
+  .message-composer {
+    gap: 0.5rem;
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
+  }
+
+  .conversation-header {
+    padding: 0 0.75rem;
+  }
+}
+
+@container pane (max-width: 24rem) {
+  /* Send button becomes icon-only; label stays available to screen readers */
+  .send-button {
+    padding: 0;
+    width: var(--chat-tap);
+  }
+
+  .send-button__label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+}
+
+@container chat (min-width: 90rem) {
+  .message-bubble {
+    max-width: 50%;
+  }
+}
+
+/* 6b. Tablet and below: single-pane layout (list OR conversation) */
+
+@media (max-width: 47.99rem) {
+
+  .chat-app {
+    --chat-offset: 0rem;
+    --chat-header-h: 3.5rem;
+    border: 0;
+  }
+
+  .chat-header {
+    padding: 0 1rem;
+  }
+
+  .chat-brand h1,
+  .chat-brand h2 {
+    font-size: 1.125rem;
+  }
+
+  .chat-main {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  /* Only one pane visible; JS flips data-view on .chat-app */
+  .chat-app[data-view="list"] .chat-window,
+  .chat-app[data-view="chat"] .conversation-sidebar {
+    display: none;
+  }
+
+  .conversation-sidebar {
+    border-right: 0;
+  }
+
+  .conversation-item {
+    min-height: var(--chat-tap);
+  }
+
+  .back-button {
+    display: inline-flex;
+    margin-left: -0.5rem;
+  }
+
+  .message-container {
+    padding: 1rem;
+  }
+}
+
+/* 6c. Short landscape screens (phones turned sideways): reclaim vertical space */
+
+@media (orientation: landscape) and (max-height: 32rem) {
+
+  .chat-app {
+    --chat-header-h: 2.75rem;
+    --chat-tap: 2.75rem;               /* 44px (Apple minimum) */
+  }
+
+  .sidebar-header {
+    padding: 0.5rem 1rem;
+  }
+
+  .message-composer {
+    padding-top: 0.375rem;
+    padding-bottom: max(0.375rem, env(safe-area-inset-bottom));
+  }
+
+  .message-container {
+    padding-top: 0.75rem;
+    padding-bottom: 0.75rem;
+  }
+
+  /* Notches: keep content out of the cut-out */
+  .chat-header,
+  .message-composer {
+    padding-left: max(1rem, env(safe-area-inset-left));
+    padding-right: max(1rem, env(safe-area-inset-right));
+  }
+}
+
+/* 6d. Touch devices: only apply hover tint where a real pointer exists */
+
+@media (hover: none) {
+  .conversation-item:hover {
+    background: var(--chat-surface);
+  }
+
+  .conversation-item.active:hover,
+  .conversation-item[aria-current="true"]:hover {
+    background: var(--chat-active);
+  }
+}
+/*People search*/ 
+.sidebar-search { padding: 0.75rem 1rem; border-bottom: 1px solid var(--chat-border-soft, #eee); }
+.sidebar-search .form-control { min-height: var(--chat-tap, 3rem); font-size: 1rem; border-radius: 999px; }
+.user-results { margin: 0.5rem 0 0; max-height: 40vh; overflow-y: auto; }
+.user-result { width: 100%; min-height: var(--chat-tap, 3rem); padding: 0.5rem 0.75rem;
+  border: 0; background: transparent; text-align: left; border-radius: 0.5rem; }
+.user-result:hover, .user-result:focus-visible { background: var(--chat-active, #eef3ff); }
+
+.conversation-item[data-unread]::after {
+  content: attr(data-unread); margin-left: auto; min-width: 1.5rem; padding: 0.125rem 0.5rem;
+  border-radius: 999px; background: var(--chat-accent, #258cfb); color: #fff;
+  font-size: 0.75rem; font-weight: 700; text-align: center;
+}
+
+/* Auth pages*/
+.auth-container { width: min(100% - 2rem, 26rem); margin: 4dvh auto; padding: clamp(1.25rem, 4vw, 2rem);
+  background: #fff; border: 1px solid #ddd; border-radius: 1rem; }
+.auth-container h1 { font-size: 1.5rem; margin-bottom: 1.25rem; }
+.auth-container .form-control, .auth-container .btn { min-height: 3rem; font-size: 1rem; }
+
+/*message pending/failed*/
+.message-wrapper.pending .message-bubble { opacity: 0.6; }
+.message-wrapper.failed .message-bubble { border: 1px solid #dc3545; }
+.message-wrapper.failed .message-bubble::after {
+  content: "Not sent";
+  display: block;
+  margin-top: 0.25rem;
+  font-size: 0.75rem;
+  color: #dc3545;
 }

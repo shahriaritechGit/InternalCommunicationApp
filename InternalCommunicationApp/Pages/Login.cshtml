@@ -5,27 +5,35 @@
     ViewData["Title"] = "Log In";
 }
 
-<div class = "auth-container">
-    <h2>Log In</h2>
-    <form method = "post">
-        <div>
-            <label asp-for ="Username"></label>
-            <input asp-for="Username" autocomplete="username" />
-            <span asp-validation-for="Username"></span>
-        </div>
-        <div>
-            <label asp-for="Password"></label>
-            <input asp-for="Password" type="password" autocomplete="current-password" />
-            <span asp-validation-for="Password"></span>
-        </div>
-        <button type="submit">Log In</button>
-    </form>
+<section class="auth-container">
+    <h1>Log in</h1>
+
     @if (!string.IsNullOrEmpty(Model.ErrorMessage))
     {
-        <p>@Model.ErrorMessage</p>
+        <div class="alert alert-danger" role="alert">@Model.ErrorMessage</div>
     }
-    <p>
-        Don't have an account?
-        <a asp-page="/Signup">Sign up</a>
+
+    <form method="post">
+        <div class="form-floating mb-3">
+            <input asp-for="Username" class="form-control" placeholder="Username" autocomplete="username" autofocus />
+            <label asp-for="Username"></label>
+            <span asp-validation-for="Username" class="text-danger small"></span>
+        </div>
+
+        <div class="form-floating mb-3">
+            <input asp-for="Password" class="form-control" placeholder="Password" autocomplete="current-password" />
+            <label asp-for="Password"></label>
+            <span asp-validation-for="Password" class="text-danger small"></span>
+        </div>
+
+        <button type="submit" class="btn btn-primary w-100">Log in</button>
+    </form>
+
+    <p class="mt-3 mb-0 text-center">
+        Don't have an account? <a asp-page="/Signup">Sign up</a>
     </p>
-</div>
+</section>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

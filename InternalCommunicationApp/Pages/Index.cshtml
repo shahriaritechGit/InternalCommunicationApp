@@ -1,5 +1,4 @@
-﻿
-@page
+﻿@page
 @using System.Security.Claims
 @model IndexModel
 @attribute [Microsoft.AspNetCore.Authorization.Authorize]
@@ -8,15 +7,17 @@
     ViewData["Title"] = "Messages";
 }
 
-<div class="chat-app">
+<a class="visually-hidden-focusable btn btn-primary m-2" href="#messageInput">Skip to message box</a>
+
+<div class="chat-app" data-chat-app data-view="list">
 
     <!-- Top Bar -->
     <header class="chat-header">
         <div class="chat-brand">
-            <h2>Internal Communication</h2>
+            <h1>Internal Communication</h1>
         </div>
 
-        <div class="chat-user">
+        <div class="chat-user" aria-label="Signed in as @User.Identity?.Name">
             <span>@User.Identity?.Name</span>
         </div>
     </header>
@@ -25,72 +26,113 @@
     <div class="chat-main">
 
         <!-- Conversation Sidebar -->
-        <aside class="conversation-sidebar">
+        <aside class="conversation-sidebar" aria-labelledby="sidebarTitle">
 
             <div class="sidebar-header">
-                <h3>Messages</h3>
+                <h2 id="sidebarTitle">Messages</h2>
+            </div>
+            <div class="sidebar-search">
+                <label for="userSearch" class="visually-hidden">Search people to message</label>
+                <input id="userSearch" type="search" class="form-control"
+                    placeholder="Search people…" autocomplete="off" />
+                <ul id="userResults" class="user-results list-unstyled" hidden aria-label="Search results"></ul>
             </div>
 
-        <div class="conversation-list">
+            <nav class="conversation-list" aria-label="Conversations">
 
-            @foreach (var conversation in Model.Conversations)
-            {
-                <button
-                    class="conversation-item"
-                    data-conversation-id="@conversation.ConversationId"
-                    data-username="@conversation.OtherUsername"
-                    type="button">
+                <!-- Skeleton: toggle with ChatUI.setListLoading(true/false) -->
+                <div id="conversationSkeleton" hidden aria-hidden="true">
+                    @for (var i = 0; i < 6; i++)
+                    {
+                        <div class="conversation-skeleton-item">
+                            <span class="skeleton skeleton--circle"></span>
+                            <div class="conversation-skeleton-lines">
+                                <span class="skeleton" style="height:.875rem;width:55%"></span>
+                                <span class="skeleton" style="height:.75rem;width:80%"></span>
+                            </div>
+                        </div>
+                    }
+                </div>
 
-                    <div class="avatar">
-                        @conversation.OtherUsername
-                            .Substring(0, 1)
-                            .ToUpper()
-                    </div>
+                @foreach (var conversation in Model.Conversations)
+                {
+                    <button
+                        class="conversation-item"
+                        data-conversation-id="@conversation.ConversationId"
+                        data-username="@conversation.OtherUsername"
+                        aria-label="Open conversation with @conversation.OtherUsername"
+                        data-unread="@(conversation.Unread > 0 ? (int?)conversation.Unread : null)"
+                        type="button">
 
-                    <div class="conversation-info">
+                        <div class="avatar" aria-hidden="true">
+                            @(string.IsNullOrEmpty(conversation.OtherUsername) ? "?" : conversation.OtherUsername[..1].ToUpper())
+                        </div>
 
-                        <strong>
-                            @conversation.OtherUsername
-                        </strong>
+                        <div class="conversation-info">
+                            <strong>@conversation.OtherUsername</strong>
+                            <span>Start a conversation</span>
+                        </div>
 
-                        <span>
-                            Start a conversation
-                        </span>
+                    </button>
+                }
 
-                    </div>
-
-                </button>
-            }
-
-        </div>
+            </nav>
 
         </aside>
 
         <!-- Chat Window -->
-        <section class="chat-window">
+        <section class="chat-window" aria-label="Conversation">
 
             <!-- Chat Header -->
             <div class="conversation-header">
 
-                <div class="avatar" id="conversationAvatar">
+                <!-- Visible on small screens only (CSS) -->
+                <button type="button" class="icon-button back-button" data-chat-back
+                        aria-label="Back to conversations">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                         stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+                        <path d="M15 18l-6-6 6-6" />
+                    </svg>
+                </button>
+
+                <div class="avatar" id="conversationAvatar" aria-hidden="true">
                     ?
                 </div>
 
                 <div>
-                    <strong id="conversationUsername">
+                    <h2 class="conversation-title" id="conversationUsername" tabindex="-1">
                         Select a conversation
-                    </strong>                    
-                    <span>Active conversation</span>
+                    </h2>
+                    <span id="conversationStatus" role="status"></span>
                 </div>
 
             </div>
 
             <!-- Messages -->
-            <div id="messageContainer" class="message-container">
+            <div class="message-area">
 
-                <div class="empty-chat">
-                    <h3>No messages yet</h3>
-                    <p>Send a message to start the conversation.</p>
+                <div id="messageContainer"
+                     class="message-container"
+                     role="log"
+                     aria-live="polite"
+                     aria-relevant="additions"
+                     aria-label="Messages">
+
+                    <div class="empty-chat">
+                        <h3>No messages yet</h3>
+                        <p>Send a message to start the conversation.</p>
+                    </div>
+
+                </div>
+
+                <!-- Skeleton overlay: shown while a conversation loads, never touched by chat.js -->
+                <div id="messageSkeleton" class="message-skeleton" hidden aria-hidden="true">
+                    <span class="skeleton skeleton--left"  style="width:55%"></span>
+                    <span class="skeleton skeleton--right" style="width:40%"></span>
+                    <span class="skeleton skeleton--left"  style="width:65%"></span>
+                    <span class="skeleton skeleton--right" style="width:50%"></span>
+                    <span class="skeleton skeleton--left"  style="width:35%"></span>
+                    <span class="skeleton skeleton--right" style="width:60%"></span>
                 </div>
 
             </div>
@@ -98,8 +140,11 @@
             <!-- Message Composer -->
             <div class="message-composer">
 
-                <button type="button" class="icon-button" title="Attach file">
-                    📎
+                <button type="button" class="btn btn-light icon-button" title="Attach file" aria-label="Attach file">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                         stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+                        <path d="M21.4 11.1l-9.2 9.2a6 6 0 0 1-8.5-8.5l9.2-9.2a4 4 0 0 1 5.7 5.7l-9.2 9.2a2 2 0 0 1-2.8-2.8l8.5-8.5" />
+                    </svg>
                 </button>
 
                 <input
@@ -107,17 +152,25 @@
                     type="hidden"
                     value="" />
 
+                <label for="messageInput" class="visually-hidden">Message</label>
                 <input
                     id="messageInput"
                     type="text"
+                    class="form-control"
                     placeholder="Type a message..."
-                    autocomplete="off" />
+                    autocomplete="off"
+                    enterkeyhint="send" />
 
                 <button
                     id="sendButton"
                     type="button"
-                    class="send-button">
-                    Send
+                    class="btn btn-primary send-button"
+                    aria-label="Send message">
+                    <span class="send-button__label">Send</span>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                         stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+                        <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z" />
+                    </svg>
                 </button>
 
             </div>
@@ -130,3 +183,4 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/9.0.6/signalr.min.js"></script>
 <script src="~/js/chat.js?v=2"></script>
+<script src="~/js/chat-ui.js?v=1" defer></script>
