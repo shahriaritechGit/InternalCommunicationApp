@@ -655,3 +655,31 @@ body {
   font-size: 0.75rem;
   color: #dc3545;
 }
+/* Logout */
+.chat-header-actions { display: flex; align-items: center; gap: 0.75rem; min-width: 0; }
+.logout-button { min-height: var(--chat-tap); display: inline-flex; align-items: center; gap: 0.375rem; white-space: nowrap; }
+.logout-button svg { width: 1.25rem; height: 1.25rem; flex-shrink: 0; }
+
+@media (max-width: 47.99rem) {
+  .logout-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+}
+
+/* Time / edited label under each bubble */
+.message-meta { display: flex; align-items: center; justify-content: flex-end; gap: 0.375rem;
+  margin-top: 0.25rem; font-size: 0.75rem; color: #4b5563; }
+.message-edited { font-style: italic; }
+
+.message-wrapper.deleted .message-text { font-style: italic; color: var(--chat-text-muted); }
+
+/* Edit / delete */
+.message-menu-btn { position: relative; display: inline-flex; align-items: center; justify-content: center;
+  width: 1.5rem; height: 1.5rem; padding: 0; border: 0; border-radius: 50%;
+  background: transparent; color: inherit; cursor: pointer; }
+.message-menu-btn::after { content: ""; position: absolute; inset: -0.75rem -0.5rem; }  /* bigger tap area, same look */
+.message-menu-btn svg { width: 1rem; height: 1rem; fill: currentColor; }
+.message-menu-btn:hover { background: rgba(0, 0, 0, 0.08); }
+.message-menu-btn:focus-visible { outline: 0.1875rem solid var(--chat-accent); outline-offset: 0.125rem; }
+
+.message-actions, .message-edit-row { display: flex; gap: 0.5rem; margin-top: 0.5rem; }
+.message-actions .btn, .message-edit-row .btn { flex: 1; min-height: var(--chat-tap); }
+.message-edit { width: 100%; min-width: 12rem; min-height: var(--chat-tap); margin-top: 0.25rem; font-size: 1rem; }

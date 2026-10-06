@@ -28,7 +28,7 @@ public class IndexModel : PageModel
     private int CurrentUserId => int.Parse(
         User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
-    public record MessageDto(long Id, string Sender, string? Text, DateTime SentAt);
+    public record MessageDto(long Id, string Sender, string? Text, DateTime SentAt,DateTime? EditedAt = null, bool Deleted = false);
     public List<ConversationViewModel> Conversations { get; set; } = new();
 
     public async Task OnGetAsync()
@@ -50,6 +50,33 @@ public class IndexModel : PageModel
             })
             .OrderByDescending(x => x.LastMessageAt)
             .ToListAsync();
+            if (Conversations.Count > 0)
+            {
+                var ids = Conversations.Select(c => c.ConversationId).ToList();
+
+                var lastIds = await _db.Messages
+                    .Where(m => ids.Contains(m.ConversationId))
+                    .GroupBy(m => m.ConversationId)
+                    .Select(g => g.Max(m => m.Id))
+                    .ToListAsync();
+
+                var lasts = (await _db.Messages.AsNoTracking()
+                    .Where(m => lastIds.Contains(m.Id))
+                    .Select(m => new { m.ConversationId, m.SenderId, m.Content, Deleted = m.DeletedAt != null })
+                    .ToListAsync())
+                    .ToDictionary(m => m.ConversationId);
+
+                foreach (var c in Conversations)
+                {
+                    if (!lasts.TryGetValue(c.ConversationId, out var last)) continue;
+
+                    if (last.Deleted) { c.Preview = "This message was deleted"; continue; }
+
+                    var text = last.Content ?? "";
+                    if (text.Length > 80) text = text[..80] + "…";
+                    c.Preview = (last.SenderId == currentUserId ? "You: " : "") + text;
+                }
+            }
             try
             {
                 var entries = await _redis.GetDatabase().HashGetAllAsync($"unread:{currentUserId}");
@@ -60,70 +87,76 @@ public class IndexModel : PageModel
             catch (RedisException) { }
     }
     // GET /?handler=Users&q=af  -> ["afnan", ...]
-public async Task<IActionResult> OnGetUsersAsync(string? q)
-{
-    q = q?.Trim();
-    if (string.IsNullOrEmpty(q)) return new JsonResult(Array.Empty<string>());
-
-    var me = CurrentUserId;
-    var names = await _db.Users.AsNoTracking()
-        .Where(u => u.Id != me && u.Username.StartsWith(q))
-        .OrderBy(u => u.Username)
-        .Select(u => u.Username)
-        .Take(20)
-        .ToListAsync();
-
-    return new JsonResult(names);
-}
-
-// GET /?handler=Messages&with=afnan[&before=123]
-public async Task<IActionResult> OnGetMessagesAsync(string with, long? before)
-{
-    var me = CurrentUserId;
-
-    var otherId = await _db.Users.AsNoTracking()
-        .Where(u => u.Username == with)
-        .Select(u => (int?)u.Id)
-        .FirstOrDefaultAsync();
-    if (otherId == null) return new JsonResult(Array.Empty<MessageDto>());
-
-    // Includes "I am a member" so nobody can read someone else's chat
-    var convId = await _db.Conversations.AsNoTracking()
-        .Where(c => !c.IsGroup
-            && c.ConversationMembers.Any(m => m.UserId == me)
-            && c.ConversationMembers.Any(m => m.UserId == otherId))
-        .Select(c => (int?)c.Id)
-        .FirstOrDefaultAsync();
-    if (convId == null) return new JsonResult(Array.Empty<MessageDto>()); // chat not started yet
-
-    // First page: try Redis, fall back to SQL
-    if (before == null)
+    public async Task<IActionResult> OnGetUsersAsync(string? q)
     {
-        try
-        {
-            var cached = await _redis.GetDatabase()
-                .ListRangeAsync($"chat:{convId}:recent", 0, PageSize - 1);
-            if (cached.Length >= PageSize)
-                return new JsonResult(cached
-                    .Select(v => JsonSerializer.Deserialize<MessageDto>((string)v!, Json)!)
-                    .Reverse());
-        }
-        catch (RedisException) { /* fall through to SQL */ }
+        q = q?.Trim();
+        if (string.IsNullOrEmpty(q)) return new JsonResult(Array.Empty<string>());
+
+        var me = CurrentUserId;
+        var names = await _db.Users.AsNoTracking()
+            .Where(u => u.Id != me && u.Username.StartsWith(q))
+            .OrderBy(u => u.Username)
+            .Select(u => u.Username)
+            .Take(20)
+            .ToListAsync();
+
+        return new JsonResult(names);
     }
 
-    var query = _db.Messages.AsNoTracking()
-        .Where(m => m.ConversationId == convId && m.DeletedAt == null);
-    if (before != null) query = query.Where(m => m.Id < before);
+    // GET /?handler=Messages&with=afnan[&before=123]
+    public async Task<IActionResult> OnGetMessagesAsync(string with, long? before)
+    {
+        var me = CurrentUserId;
 
-    var page = await query
-        .OrderByDescending(m => m.Id)
-        .Take(PageSize)
-        .Select(m => new MessageDto(m.Id, m.Sender.Username, m.Content, m.SentAt))
-        .ToListAsync();
-     // oldest first for display
-    page.Reverse();  
-    return new JsonResult(page);
-}
+        var otherId = await _db.Users.AsNoTracking()
+            .Where(u => u.Username == with)
+            .Select(u => (int?)u.Id)
+            .FirstOrDefaultAsync();
+        if (otherId == null) return new JsonResult(Array.Empty<MessageDto>());
+
+        // Includes "I am a member" so nobody can read someone else's chat
+        var convId = await _db.Conversations.AsNoTracking()
+            .Where(c => !c.IsGroup
+                && c.ConversationMembers.Any(m => m.UserId == me)
+                && c.ConversationMembers.Any(m => m.UserId == otherId))
+            .Select(c => (int?)c.Id)
+            .FirstOrDefaultAsync();
+        if (convId == null) return new JsonResult(Array.Empty<MessageDto>()); // chat not started yet
+
+        // First page: try Redis, fall back to SQL
+        if (before == null)
+        {
+            try
+            {
+                var cached = await _redis.GetDatabase()
+                    .ListRangeAsync($"chat:{convId}:recent", 0, PageSize - 1);
+                if (cached.Length >= PageSize)
+                    return new JsonResult(cached
+                        .Select(v => JsonSerializer.Deserialize<MessageDto>((string)v!, Json)!)
+                        .Reverse());
+            }
+            catch (RedisException) { /* fall through to SQL */ }
+        }
+
+        var query = _db.Messages.AsNoTracking()
+            .Where(m => m.ConversationId == convId);          // deleted ones are included, as placeholders
+        if (before != null) query = query.Where(m => m.Id < before);
+
+        var page = await query
+            .OrderByDescending(m => m.Id)
+            .Take(PageSize)
+            .Select(m => new MessageDto(
+                m.Id,
+                m.Sender.Username,
+                m.DeletedAt == null ? m.Content : null,       // deleted text never leaves the server
+                m.SentAt,
+                m.EditedAt,
+                m.DeletedAt != null))
+            .ToListAsync();
+        // oldest first for display
+        page.Reverse();  
+        return new JsonResult(page);
+    }
 
     public class ConversationViewModel
     {
@@ -131,6 +164,7 @@ public async Task<IActionResult> OnGetMessagesAsync(string with, long? before)
 
         public string OtherUsername { get; set; } = string.Empty;
         public DateTime? LastMessageAt { get; set; }
+        public string? Preview { get; set; }
         public int Unread { get; set; }
 
     }

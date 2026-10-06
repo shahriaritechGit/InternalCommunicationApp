@@ -20,6 +20,15 @@
         <div class="chat-user" aria-label="Signed in as @User.Identity?.Name">
             <span>@User.Identity?.Name</span>
         </div>
+            <form method="post" asp-page="/Logout">
+        <button type="submit" class="btn btn-outline-secondary logout-button" aria-label="Log out">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                 stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" />
+            </svg>
+            <span class="logout-label">Log out</span>
+        </button>
+    </form>
     </header>
 
     <!-- Main Chat Area -->
@@ -70,7 +79,7 @@
 
                         <div class="conversation-info">
                             <strong>@conversation.OtherUsername</strong>
-                            <span>Start a conversation</span>
+                            <span>@(conversation.Preview ?? "Start a conversation")</span>                        
                         </div>
 
                     </button>

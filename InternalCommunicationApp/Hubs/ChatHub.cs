@@ -76,7 +76,75 @@ public class ChatHub : Hub
             .Distinct()
             .ToListAsync();
     public record PresenceDto(bool Online, long? LastSeen);
+    private async Task InvalidateRecentAsync(int conversationId)
+    {
+        try { await _redis.GetDatabase().KeyDeleteAsync($"chat:{conversationId}:recent"); }
+        catch (RedisException) { }
+    }
 
+    private async Task<(Message Msg, List<string> UserIds, string OtherName, bool IsLast)> LoadOwnMessageAsync(long messageId)
+    {
+        var me = int.Parse(Context.UserIdentifier!);
+
+        var msg = await _db.Messages.FirstOrDefaultAsync(m => m.Id == messageId && m.SenderId == me);
+        if (msg == null) throw new HubException("Message not found.");
+        if (msg.DeletedAt != null) throw new HubException("Message was already deleted.");
+
+        var members = await _db.ConversationMembers.AsNoTracking()
+            .Where(m => m.ConversationId == msg.ConversationId)
+            .Select(m => new { m.UserId, m.User.Username })
+            .ToListAsync();
+
+        var other = members.FirstOrDefault(m => m.UserId != me)?.Username ?? "";
+        var isLast = !await _db.Messages.AnyAsync(m => m.ConversationId == msg.ConversationId && m.Id > msg.Id);
+
+        return (msg, members.Select(m => m.UserId.ToString()).ToList(), other, isLast);
+    }
+
+    public async Task EditMessage(long messageId, string newText)
+    {
+        newText = newText?.Trim() ?? "";
+        if (newText.Length == 0) throw new HubException("Message is empty.");
+        if (newText.Length > MaxMessageLength) throw new HubException("Message is too long.");
+        if (await RateLimitedAsync("edit", 10, TimeSpan.FromSeconds(10)))
+            throw new HubException("You are editing too fast. Please wait a few seconds.");
+
+        var (msg, userIds, other, isLast) = await LoadOwnMessageAsync(messageId);
+
+        msg.Content = newText;
+        msg.EditedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+        await InvalidateRecentAsync(msg.ConversationId);   // cached copy is stale now
+
+        await Clients.Users(userIds).SendAsync("MessageEdited", new
+        {
+            id = msg.Id,
+            conversationId = msg.ConversationId,
+            sender = Context.User!.Identity!.Name,
+            recipient = other,
+            text = msg.Content,
+            editedAt = msg.EditedAt,
+            isLast
+        });
+    }
+
+    public async Task DeleteMessage(long messageId)
+    {
+        var (msg, userIds, other, isLast) = await LoadOwnMessageAsync(messageId);
+
+        msg.DeletedAt = DateTime.UtcNow;                   // soft delete: row and content stay in the DB
+        await _db.SaveChangesAsync();
+        await InvalidateRecentAsync(msg.ConversationId);
+
+        await Clients.Users(userIds).SendAsync("MessageDeleted", new
+        {
+            id = msg.Id,
+            conversationId = msg.ConversationId,
+            sender = Context.User!.Identity!.Name,
+            recipient = other,
+            isLast
+        });
+    }
     public override async Task OnConnectedAsync()
     {
         var userId = int.Parse(Context.UserIdentifier!);
@@ -220,14 +288,6 @@ public class ChatHub : Hub
         }
         catch (RedisException) { }
     }
-    // public async Task<bool> IsOnline(string username)
-    // {
-    //     var id = await ResolveUserIdAsync(username);
-    //     if (id == null) return false;
-    //     try { return await _redis.GetDatabase().SetLengthAsync($"presence:{id}") > 0; }
-    //     catch (RedisException) { return false; }
-    // }
-
     public async Task Typing(string recipient)
     {
         if (string.IsNullOrWhiteSpace(recipient)) return;
