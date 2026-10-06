@@ -14,6 +14,8 @@ const sendButton = document.getElementById("sendButton");
 const recipientInput = document.getElementById("recipientInput");
 const conversationUsername = document.getElementById("conversationUsername");
 const conversationAvatar = document.getElementById("conversationAvatar");
+const profileCard = document.querySelector(".profile-card");
+const profileStatus = document.getElementById("profileStatus");
 const conversationList = document.querySelector(".conversation-list");
 const userSearch = document.getElementById("userSearch");
 const userResults = document.getElementById("userResults");
@@ -29,6 +31,11 @@ const lastSeen = new Map();   // username -> unix ms
 let typingUser = null;
 let typingTimer;
 
+
+function setMyStatus(state, text) {
+    profileCard.dataset.status = state;
+    profileStatus.textContent = text;
+}
 function renderStatus() {
     const header = document.querySelector(".conversation-header");
     if (!activeUsername) {
@@ -570,10 +577,16 @@ messageInput.addEventListener("keydown", e => {
 connection.start()
     .then(() => {
         console.log("SignalR connection established");
+        setMyStatus("online", "Online");
     })
     .catch(err => {
         console.error("SignalR connection failed:", err);
+        setMyStatus("offline", "Offline");
     });
+
+connection.onreconnecting(() => setMyStatus("connecting", "Reconnecting…"));
+connection.onreconnected(() => setMyStatus("online", "Online"));
+connection.onclose(() => setMyStatus("offline", "Offline"));
 // Heartbeat: server treats 90s of silence as a dead connection
 function sendHeartbeat() {
     if (connection.state === signalR.HubConnectionState.Connected)

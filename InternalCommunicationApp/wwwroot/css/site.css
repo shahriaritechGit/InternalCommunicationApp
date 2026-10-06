@@ -710,3 +710,101 @@ body {
   .chat-placeholder { display: none; }
 }
 
+/* Own profile card (top of the sidebar) */
+/* .profile-card {
+  display: flex;
+  align-items: center;
+  gap: var(--chat-gap);
+  padding: 0.75rem 1rem;
+  background: #f0f2f5;
+  border-bottom: 1px solid var(--chat-border-soft);
+}
+
+.profile-card form { margin: 0; }
+
+.profile-card .avatar { position: relative; overflow: visible; }
+
+.avatar--lg { width: 3rem; height: 3rem; font-size: 1.25rem; }
+.avatar--me { background: var(--chat-accent); color: #fff; }
+
+.profile-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.profile-info .chat-user { font-size: 1rem; }
+.profile-info small { color: var(--chat-text-muted); }
+
+/* Status dot on my avatar */
+/* .profile-card .avatar::after {
+  content: "";
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 0.75rem;
+  height: 0.75rem;
+  border-radius: 50%;
+  border: 2px solid #f0f2f5;
+  background: #9ca3af;                 /* connecting / offline */
+/*} */
+
+/* .profile-card[data-status="online"] .avatar::after { background: #22c55e; }
+.profile-card[data-status="connecting"] .avatar::after { background: #f59e0b; } */ 
+/* Own profile (top-right of the header) */
+.chat-brand { flex: 1; min-width: 0; }
+.chat-brand h1 { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.profile-card {
+  display: flex;
+  align-items: center;
+  gap: var(--chat-gap);
+  min-width: 0;
+  max-width: 60%;
+}
+
+.profile-card form { margin: 0; }
+
+.profile-card .avatar {
+  position: relative;
+  overflow: visible;                   /* so the status dot is not clipped */
+  width: 2.5rem;
+  height: 2.5rem;
+}
+
+.avatar--me { background: var(--chat-accent); color: #fff; }
+
+.profile-info {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  line-height: 1.2;
+}
+
+.profile-info .chat-user { font-size: 0.9375rem; }
+.profile-info small { color: var(--chat-text-muted); }
+
+/* Status dot on my avatar */
+.profile-card .avatar::after {
+  content: "";
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 0.75rem;
+  height: 0.75rem;
+  border-radius: 50%;
+  border: 2px solid #fff;
+  background: #9ca3af;                 /* offline */
+}
+
+.profile-card[data-status="online"] .avatar::after { background: #22c55e; }
+.profile-card[data-status="connecting"] .avatar::after { background: #f59e0b; }
+.chat-main > * { grid-row: 1; }
+.chat-main > .conversation-sidebar { grid-column: 1; }
+.chat-main > .chat-window,
+.chat-main > .chat-placeholder { grid-column: 2; }
+
+@media (max-width: 47.99rem) {
+  .chat-main > .chat-window { grid-column: 1; }
+}
