@@ -1,9 +1,4 @@
-/* wwwroot/js/chat-ui.js
-   Presentation-only helpers. Does not touch SignalR or message logic (chat.js owns that).
-   - Mobile: switches between the conversation list and the chat pane
-   - Skeleton loaders for the message area and the conversation list
-   - Keeps aria-current in sync for screen readers
-   Public API: window.ChatUI.setMessagesLoading(bool), setListLoading(bool), showView('list'|'chat') */
+
 (() => {
   'use strict';
 
