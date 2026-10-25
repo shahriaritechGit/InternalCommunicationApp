@@ -88,9 +88,10 @@ public class CallService
     public async Task RefreshAsync(CallInfo c)
     {
         var db = _redis.GetDatabase();
+        
         await db.KeyExpireAsync(CallKey(c.CallId), CallTtl);
         await db.KeyExpireAsync(BusyKey(c.CallerId), CallTtl);
-        await db.KeyExpireAsync(BusyKey(c.CalleeId), CallTtl);
+        await db.KeyExpireAsync(BusyKey(c.CalleeId), CallTtl); 
     }
 
     public Task<string?> ActiveCallIdAsync(int userId) =>
