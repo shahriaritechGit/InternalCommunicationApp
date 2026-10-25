@@ -9,7 +9,7 @@ using Microsoft.EntityFrameworkCore;
 namespace InternalCommunicationApp.Hubs;
 
 [Authorize]
-public class ChatHub : Hub
+public partial class ChatHub : Hub
 {
     private const int MaxMessageLength = 2000;
     private readonly AppDbContext _db;

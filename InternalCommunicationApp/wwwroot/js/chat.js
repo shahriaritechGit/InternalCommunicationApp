@@ -1,3 +1,4 @@
+
 "use strict";
 
 console.log("chat.js loaded");
@@ -573,6 +574,9 @@ messageInput.addEventListener("keydown", e => {
         sendCurrentMessage();
     }
 });
+// Voice/video calls (call.js): must be registered before the connection starts
+Calls.init(connection, { getPeer: () => recipientInput.value.trim() });
+
 //start signalR
 connection.start()
     .then(() => {
